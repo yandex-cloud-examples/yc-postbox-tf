@@ -1,4 +1,5 @@
 # Настройка провайдеров
+
 terraform {
   required_providers {
     yandex = {
@@ -98,14 +99,16 @@ data "yandex_dns_zone" "postbox" {
 }
 
 # Переменные для форматирования DNS-записи
+
 locals {
-  zone = trimsuffix(data.yandex_dns_zone.postbox.zone, ".")
-  record_name = trimsuffix(replace(var.domain, local.zone, ""), ".")
+  zone             = trimsuffix(data.yandex_dns_zone.postbox.zone, ".")
+  record_name      = trimsuffix(replace(var.domain, local.zone, ""), ".")
   base_record_name = length(local.record_name) > 0 ? ".${local.record_name}" : ""
   dkim             = "\"v=DKIM1;h=sha256;k=rsa;p=${trim(local.public_key, "\n")}\""
 }
 
-# Создание DKIM TXT записи в DNS
+# Создание DKIM TXT записи
+
 resource "yandex_dns_recordset" "postbox" {
   name    = "${var.domain_signing_selector}._domainkey"
   zone_id = data.yandex_dns_zone.postbox.id
