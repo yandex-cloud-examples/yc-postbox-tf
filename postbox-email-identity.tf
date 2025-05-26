@@ -45,7 +45,7 @@ variable "domain" {
 
 variable "dns_zone_name" {
   type        = string
-  description = "DNS зона, в которую будут добавлены DNS-записи"
+  description = "Имя зоны DNS, в которую будут добавлены DNS-записи"
 }
 
 # Создание сервисного аккаунта
@@ -71,8 +71,7 @@ resource "yandex_iam_service_account_static_access_key" "postbox-admin-key" {
   service_account_id = yandex_iam_service_account.postbox.id
 }
 
-
-# Создание Email Identity в Postbox
+# Создание адреса в Yandex Cloud Postbox
 
 locals {
   private_key = file("privatekey.pem")
@@ -107,7 +106,7 @@ locals {
   dkim             = "\"v=DKIM1;h=sha256;k=rsa;p=${trim(local.public_key, "\n")}\""
 }
 
-# Создание DKIM TXT записи
+# Создание DKIM TXT DNS-записи
 
 resource "yandex_dns_recordset" "postbox" {
   name    = "${var.domain_signing_selector}._domainkey"
