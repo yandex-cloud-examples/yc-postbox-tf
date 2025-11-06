@@ -95,6 +95,7 @@ resource "aws_sesv2_email_identity" "example" {
 
 data "yandex_dns_zone" "postbox" {
   name      = var.dns_zone_name
+  folder_id = var.folder_id
 }
 
 # Переменные для форматирования DNS-записи
