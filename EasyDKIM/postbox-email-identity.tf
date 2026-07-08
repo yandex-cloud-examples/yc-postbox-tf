@@ -32,12 +32,6 @@ variable "folder_id" {
   description = "ID каталога, в котором будут созданы ресурсы"
 }
 
-variable "domain_signing_selector" {
-  type        = string
-  default     = "postbox"
-  description = "Селектор для подписи домена"
-}
-
 variable "domain" {
   type        = string
   description = "Домен, который вы хотите использовать для отправки писем"
@@ -71,19 +65,11 @@ resource "yandex_iam_service_account_static_access_key" "postbox-admin-key" {
   service_account_id = yandex_iam_service_account.postbox.id
 }
 
-# Создание адреса в Yandex Cloud Postbox
-
-locals {
-  private_key = file("privatekey.pem")
-  public_key  = file("dkim_dns_value.txt")
-}
+# Создание адреса в Yandex Cloud Postbox с EasyDKIM
+# Ключи DKIM генерирует Yandex Cloud Postbox, свой приватный ключ указывать не нужно
 
 resource "aws_sesv2_email_identity" "example" {
   email_identity = var.domain
-  dkim_signing_attributes {
-    domain_signing_selector    = var.domain_signing_selector
-    domain_signing_private_key = local.private_key
-  }
   depends_on = [
     yandex_iam_service_account.postbox,
     yandex_iam_service_account_static_access_key.postbox-admin-key,
@@ -94,26 +80,25 @@ resource "aws_sesv2_email_identity" "example" {
 # Добавление DNS-записей, если вы используете Yandex Cloud DNS и у вас уже есть DNS-зона
 
 data "yandex_dns_zone" "postbox" {
-  name      = var.dns_zone_name
+  name = var.dns_zone_name
+  folder_id = var.folder_id
 }
 
-# Переменные для форматирования DNS-записи
+# Токены DKIM, которые сгенерировал Yandex Cloud Postbox для EasyDKIM (всегда три штуки)
 
 locals {
-  zone             = trimsuffix(data.yandex_dns_zone.postbox.zone, ".")
-  record_name      = trimsuffix(replace(var.domain, local.zone, ""), ".")
-  base_record_name = length(local.record_name) > 0 ? ".${local.record_name}" : ""
-  dkim             = "\"v=DKIM1;h=sha256;k=rsa;p=${trim(local.public_key, "\n")}\""
+  dkim_tokens = aws_sesv2_email_identity.example.dkim_signing_attributes[0].tokens
 }
 
-# Создание DKIM TXT DNS-записи
+# Создание CNAME-записей DKIM для каждого токена
 
 resource "yandex_dns_recordset" "postbox" {
-  name    = "${var.domain_signing_selector}._domainkey"
+  count   = 2
+  name    = "${local.dkim_tokens[count.index]}._domainkey"
   zone_id = data.yandex_dns_zone.postbox.id
-  type    = "TXT"
+  type    = "CNAME"
   data = [
-    local.dkim,
+    "${local.dkim_tokens[count.index]}.dkim.pstbx.ru.",
   ]
   ttl = 600
 }
