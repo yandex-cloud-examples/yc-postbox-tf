@@ -6,7 +6,16 @@
 
 Для работы с Yandex Cloud Postbox в руководстве используется API, совместимый с AWS SESv2, поэтому для создания и управления ресурсами Yandex Cloud Postbox используется Terraform-провайдер [AWS](https://github.com/hashicorp/terraform-provider-aws). Для управления всеми остальными ресурсами используется Terraform-провайдер [Yandex Cloud](https://github.com/yandex-cloud/terraform-provider-yandex).
 
-Подготовка инфраструктуры для создания адреса с помощью Terraform описана в [практическом руководстве](https://yandex.cloud/ru/docs/postbox/tutorials/domain-identity-creating), необходимые для настройки конфигурационные файлы `postbox-email-identity.tf` и `postbox-email-identity.auto.tfvars` расположены в этом репозитории.
+Подготовка инфраструктуры для создания адреса с помощью Terraform описана в [практическом руководстве](https://yandex.cloud/ru/docs/postbox/tutorials/domain-identity-creating).
+
+## Способы подписи DKIM
+
+Yandex Cloud Postbox поддерживает два способа подписи писем с помощью [DKIM](https://yandex.cloud/ru/docs/postbox/concepts/authentication#dkim). Выберите подходящий вариант — в соответствующей папке находятся необходимые для настройки конфигурационные файлы `postbox-email-identity.tf` и `postbox-email-identity.auto.tfvars`.
+
+* [EasyDKIM](EasyDKIM/) — ключи DKIM генерирует и хранит сам Yandex Cloud Postbox. Вы добавляете в DNS-зону две CNAME-записи, которые ссылаются на публичные ключи, выпущенные Postbox. Ключи могут автоматически ротироваться без изменения DNS-записей. Это рекомендуемый способ.
+* [BYODKIM](BYODKIM/) (Bring Your Own DKIM) — вы генерируете пару ключей DKIM самостоятельно, передаёте приватный ключ в Postbox и добавляете в DNS-зону одну TXT-запись с публичным ключом. Подходит, если у вас уже есть собственные ключи DKIM или их выдаёт внешняя система.
+
+В обоих примерах создаётся одинаковая базовая инфраструктура (сервисный аккаунт, роль `postbox.admin`, статический ключ доступа и адрес в Yandex Cloud Postbox), различается только настройка DKIM и добавляемые DNS-записи.
 
 ## FAQ
 
