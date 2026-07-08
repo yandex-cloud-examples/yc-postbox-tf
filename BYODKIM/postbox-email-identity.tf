@@ -94,7 +94,8 @@ resource "aws_sesv2_email_identity" "example" {
 # Добавление DNS-записей, если вы используете Yandex Cloud DNS и у вас уже есть DNS-зона
 
 data "yandex_dns_zone" "postbox" {
-  name = var.dns_zone_name
+  name      = var.dns_zone_name
+  folder_id = var.folder_id
 }
 
 # Переменные для форматирования DNS-записи
