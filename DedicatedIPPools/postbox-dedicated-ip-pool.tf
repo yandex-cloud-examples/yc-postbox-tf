@@ -57,8 +57,10 @@ resource "yandex_iam_service_account" "postbox" {
 }
 
 # Роль выдаётся ресурсом folder_iam_member, а не folder_iam_binding: binding управляет
-# списком всех исполнителей роли целиком, поэтому две конфигурации, выдающие в одном
-# каталоге роль postbox.admin, вычёркивали бы сервисные аккаунты друг друга
+# списком всех исполнителей роли в каталоге целиком и вычёркивает из него всех, кого сам
+# не перечисляет, — в том числе сервисные аккаунты, которым роль postbox.admin выдали вне
+# этой конфигурации. Примеры EasyDKIM и BYODKIM используют folder_iam_member по той же
+# причине, поэтому все три конфигурации можно применить в одном каталоге
 
 resource "yandex_resourcemanager_folder_iam_member" "postbox-admin" {
   role      = "postbox.admin"

@@ -55,15 +55,15 @@ resource "yandex_iam_service_account" "postbox" {
   folder_id = var.folder_id
 }
 
-resource "yandex_resourcemanager_folder_iam_binding" "postbox-admin" {
-  for_each = toset([
-    "postbox.admin",
-  ])
-  role      = each.value
+# Роль выдаётся ресурсом folder_iam_member, а не folder_iam_binding: binding управляет
+# списком всех исполнителей роли целиком и вычёркивает из него сервисные аккаунты,
+# созданные другими конфигурациями в том же каталоге
+
+resource "yandex_resourcemanager_folder_iam_member" "postbox-admin" {
+  role      = "postbox.admin"
   folder_id = var.folder_id
-  members = [
-    "serviceAccount:${yandex_iam_service_account.postbox.id}",
-  ]
+  member    = "serviceAccount:${yandex_iam_service_account.postbox.id}"
+
   sleep_after = 5
 }
 
@@ -87,7 +87,7 @@ resource "aws_sesv2_email_identity" "example" {
   depends_on = [
     yandex_iam_service_account.postbox,
     yandex_iam_service_account_static_access_key.postbox-admin-key,
-    yandex_resourcemanager_folder_iam_binding.postbox-admin
+    yandex_resourcemanager_folder_iam_member.postbox-admin
   ]
 }
 
