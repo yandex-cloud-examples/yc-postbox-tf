@@ -19,11 +19,11 @@ Yandex Cloud Postbox поддерживает два способа подпис
 
 ## Пулы выделенных IP
 
-Если вашему тенанту выданы [выделенные IP-адреса](https://yandex.cloud/ru/docs/postbox/concepts/dedicated-ip), их можно сгруппировать в пул и отправлять письма только с адресов этого пула — например, чтобы развести по разным адресам транзакционные и рекламные рассылки.
+Если вашему тенанту выданы выделенные IP-адреса, их можно сгруппировать в пул и отправлять письма только с адресов этого пула — например, чтобы развести по разным адресам транзакционные и рекламные рассылки.
 
 * [DedicatedIPPools](DedicatedIPPools/) — создание пула выделенных IP, перемещение в него адресов тенанта и настройка конфигурации отправки, привязанной к пулу.
 
-Выделенные IP-адреса выдаются тенанту отдельно и Terraform не создаются: пример только раскладывает по пулам уже выданные адреса.
+Выделенные IP-адреса выдаются тенанту отдельно, Terraform их не создаёт: пример только раскладывает по пулам уже выданные адреса.
 
 ## FAQ
 
@@ -40,3 +40,33 @@ terraform apply
 ```
 
 Переменные окружения имеют более низкий приоритет, чем параметры в блоке `provider "aws"`, поэтому на этапе `apply` — когда ключ уже создан (это гарантирует `depends_on` в ресурсе `aws_sesv2_email_identity`) — будут использованы настоящие учётные данные сервисного аккаунта. Фиктивные значения нужны только для инициализации провайдера на этапе `plan`.
+
+### При `terraform apply` провайдер Yandex Cloud требует явной настройки (`Provider ... requires explicit configuration`)
+
+Ни в одном из примеров нет блока `provider "yandex" {}`: провайдер берёт учётные данные из окружения. Если их там нет, `terraform apply` падает ещё до первого обращения к Postbox:
+
+```text
+Error: Invalid provider configuration
+
+Provider "registry.terraform.io/yandex-cloud/yandex" requires explicit
+configuration. Add a provider block to the root module and configure the
+provider's required arguments as described in the provider documentation.
+
+Error: Failed to configure
+
+  with provider["registry.terraform.io/yandex-cloud/yandex"],
+  on <empty> line 0:
+  (source code not available)
+
+one of 'token' or 'service_account_key_file' should be specified; if you
+are inside compute instance, you can attach service account to it in order
+to authenticate via instance service account
+```
+
+Задайте IAM-токен перед запуском Terraform:
+
+```bash
+export YC_TOKEN=$(yc iam create-token)
+```
+
+Это отдельная проблема от фиктивных AWS-ключей выше: там речь о ключе AWS, которого ещё нет, потому что эта же конфигурация его и создаёт, здесь — об обычных учётных данных провайдера Yandex Cloud, которые обязательны всегда.
