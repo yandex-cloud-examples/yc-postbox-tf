@@ -56,8 +56,9 @@ resource "yandex_iam_service_account" "postbox" {
 }
 
 # Роль выдаётся ресурсом folder_iam_member, а не folder_iam_binding: binding управляет
-# списком всех исполнителей роли целиком и вычёркивает из него сервисные аккаунты,
-# созданные другими конфигурациями в том же каталоге
+# списком всех исполнителей роли в каталоге целиком и вычёркивает из него всех, кого сам
+# не перечисляет, — в том числе сервисные аккаунты, которым роль postbox.admin выдали вне
+# этой конфигурации
 
 resource "yandex_resourcemanager_folder_iam_member" "postbox-admin" {
   role      = "postbox.admin"

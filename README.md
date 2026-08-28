@@ -70,3 +70,41 @@ export YC_TOKEN=$(yc iam create-token)
 ```
 
 Это отдельная проблема от фиктивных AWS-ключей выше: там речь о ключе AWS, которого ещё нет, потому что эта же конфигурация его и создаёт, здесь — об обычных учётных данных провайдера Yandex Cloud, которые обязательны всегда.
+
+### После обновления примера `terraform plan` хочет удалить `yandex_resourcemanager_folder_iam_binding` и создать `yandex_resourcemanager_folder_iam_member`
+
+В примерах [EasyDKIM](EasyDKIM/) и [BYODKIM](BYODKIM/) роль `postbox.admin` раньше выдавалась ресурсом `yandex_resourcemanager_folder_iam_binding`, а теперь выдаётся ресурсом `yandex_resourcemanager_folder_iam_member`. `binding` управляет списком всех исполнителей роли в каталоге целиком, `member` — только одной выдачей роли одному субъекту. Благодаря этому все три примера можно применить в одном каталоге: они больше не вычёркивают сервисные аккаунты друг друга из роли `postbox.admin`.
+
+Если вы уже применяли EasyDKIM или BYODKIM, в вашем состоянии Terraform лежит ресурс по старому адресу — `yandex_resourcemanager_folder_iam_binding.postbox-admin["postbox.admin"]`. После обновления файлов примера `terraform plan` покажет удаление старого ресурса и создание нового, а провайдер предупредит, чем это грозит:
+
+```text
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+Warning: Role "postbox.admin" will be removed from 2 subject(s) of
+yandex_resourcemanager_folder_iam_binding "b1g..."
+
+Applying this change calls SetAccessBindings and removes role "postbox.admin"
+from ALL of its current subjects that are not listed in this resource's
+"members", including subjects granted outside of Terraform (via the
+corresponding *_iam_member resource, the console, CLI or API).
+```
+
+Применять такой план нельзя. Это два разных адреса ресурса, между которыми нет зависимости, поэтому порядок операций Terraform не гарантирует, — а работают они с одной и той же выдачей роли `postbox.admin` вашему сервисному аккаунту. Если создание выполнится раньше удаления, удаление снимет роль, которую создание только что выдало. Вдобавок удаление `binding` вызывает `SetAccessBindings` и снимает `postbox.admin` со всех остальных субъектов каталога — в том числе с тех, кому роль выдана вне этой конфигурации. В состоянии при этом останется `yandex_resourcemanager_folder_iam_member`, как будто роль выдана, а у сервисного аккаунта её не будет: ошибка прав от Postbox проявится только при следующем запуске.
+
+Перенесите ресурс в состоянии вручную, не давая Terraform удалить `binding`. Команда `terraform state rm` работает только с файлом состояния и к API не обращается, поэтому роль она не снимает:
+
+```bash
+terraform state rm 'yandex_resourcemanager_folder_iam_binding.postbox-admin["postbox.admin"]'
+terraform import yandex_resourcemanager_folder_iam_member.postbox-admin \
+    'b1g...,postbox.admin,serviceAccount:aje...'
+```
+
+Одинарные кавычки вокруг адреса `binding` обязательны: это экземпляр `for_each` с ключом `"postbox.admin"`, и без кавычек скобки и кавычки съест командная оболочка. Идентификатор для импорта `member` состоит из трёх частей через запятую: ID каталога, роль и субъект в формате `serviceAccount:<ID сервисного аккаунта>`. ID сервисного аккаунта можно посмотреть командой `terraform state show yandex_iam_service_account.postbox` или `yc iam service-account get postbox-admin`.
+
+После импорта `terraform plan` покажет одно пересоздание `yandex_resourcemanager_folder_iam_member.postbox-admin`: атрибут `sleep_after` при импорте не восстанавливается, а изменяется он только пересозданием. Это пересоздание безопасно — в отличие от удаления `binding`, оно затрагивает ровно одну выдачу роли: снимает её и тут же выдаёт заново тому же сервисному аккаунту. Примените его обычным `terraform apply`, после чего `terraform plan` станет пустым.
+
+Убедиться, что роль осталась на месте, можно так:
+
+```bash
+yc resource-manager folder list-access-bindings b1g...
+```
