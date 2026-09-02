@@ -48,13 +48,13 @@
 3. Примените конфигурацию:
 
     ```bash
-    export AWS_ACCESS_KEY_ID=dummy
-    export AWS_SECRET_ACCESS_KEY=dummy
     terraform init
+    AWS_ACCESS_KEY_ID=dummy \
+    AWS_SECRET_ACCESS_KEY=dummy \
     terraform apply
     ```
 
-    Фиктивные переменные окружения нужны на этапе `plan`, пока статический ключ доступа ещё не создан. Подробнее — в разделе [FAQ](../README.md#faq) корневого README.
+    Фиктивные переменные окружения передаются только процессу `terraform apply`: они нужны на этапе `plan`, пока статический ключ доступа ещё не создан, и не остаются в оболочке после завершения команды. Подробнее — в разделе [FAQ](../README.md#faq) корневого README.
 
 ## Проверка
 
@@ -93,8 +93,8 @@ aws sesv2 get-dedicated-ip --ip 203.0.113.10 \
 
 ```bash
 export YC_TOKEN=$(yc iam create-token)
-export AWS_ACCESS_KEY_ID=dummy
-export AWS_SECRET_ACCESS_KEY=dummy
+AWS_ACCESS_KEY_ID=dummy \
+AWS_SECRET_ACCESS_KEY=dummy \
 terraform destroy
 ```
 
@@ -130,8 +130,6 @@ BadRequestException: The dedicated IP pool is in use by a configuration set.
 ```
 
 Наличие адресов в пуле удалению не мешает: Postbox удаляет непустой пул, а его адреса возвращаются в `ses-default-dedicated-pool`.
-
-**Блок `delivery_options` указывайте всегда.** Конфигурация отправки, объявленная без него, приводит к бесконечному расхождению: Terraform каждый раз показывает удаление блока, а после `apply` `terraform plan` снова оказывается непустым.
 
 **Смена набора адресов в пуле не пересоздаёт пул.** Ключом `for_each` служит сам адрес, поэтому добавление и удаление адресов затрагивает только соответствующие привязки.
 

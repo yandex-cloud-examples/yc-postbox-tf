@@ -57,10 +57,8 @@ resource "yandex_iam_service_account" "postbox" {
 }
 
 # Роль выдаётся ресурсом folder_iam_member, а не folder_iam_binding: binding управляет
-# списком всех исполнителей роли в каталоге целиком и вычёркивает из него всех, кого сам
-# не перечисляет, — в том числе сервисные аккаунты, которым роль postbox.admin выдали вне
-# этой конфигурации. Примеры EasyDKIM и BYODKIM используют folder_iam_member по той же
-# причине, поэтому все три конфигурации можно применить в одном каталоге
+# списком всех исполнителей роли целиком, поэтому две конфигурации, выдающие в одном
+# каталоге роль postbox.admin, вычёркивали бы сервисные аккаунты друг друга
 
 resource "yandex_resourcemanager_folder_iam_member" "postbox-admin" {
   role      = "postbox.admin"
@@ -98,10 +96,6 @@ resource "aws_sesv2_dedicated_ip_assignment" "example" {
 
 # Создание конфигурации отправки, привязанной к пулу.
 #
-# Блок delivery_options обязателен: конфигурация отправки, объявленная без него,
-# даёт бесконечный diff — Terraform каждый раз пытается удалить блок, а API
-# возвращает его со значением tls_policy по умолчанию.
-#
 # Имя пула берётся из атрибута ресурса, а не из переменной var.pool_name. Именно
 # атрибутная ссылка строит граф зависимостей, из-за которого terraform destroy
 # удаляет конфигурацию отправки и привязки IP раньше самого пула
@@ -111,6 +105,5 @@ resource "aws_sesv2_configuration_set" "example" {
 
   delivery_options {
     sending_pool_name = aws_sesv2_dedicated_ip_pool.example.pool_name
-    tls_policy        = "REQUIRE"
   }
 }
