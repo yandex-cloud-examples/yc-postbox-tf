@@ -39,7 +39,7 @@ variable "pool_name" {
 
 variable "dedicated_ips" {
   type        = list(string)
-  description = "Выделенные IP-адреса, которые нужно поместить в пул. Адреса выдаются вашему тенанту заранее, Terraform их не создаёт"
+  description = "Выделенные IP-адреса, которые нужно поместить в пул. Адреса выдаются вашему облаку заранее, Terraform их не создаёт"
 }
 
 variable "configuration_set_name" {
